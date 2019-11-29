@@ -8,7 +8,7 @@ window.onload = () => {
   
   let x = 0.;
   let y = 0.;
-  let zoom = 1.0;
+  let zoom = 0.5;
   
   let workerCount = window.navigator.hardwareConcurrency;
   let workers = [];
