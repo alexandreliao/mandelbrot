@@ -188,6 +188,7 @@ window.onload = () => {
 `Click anywhere to zoom in x10
 Press Q to go back
 Press P to return to origin
+Use WASD to move around
 Press O to view/change your coordinates. You can save your favorite places!
  
 Press I to view/change the detail level
