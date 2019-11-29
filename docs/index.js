@@ -130,7 +130,11 @@ window.onload = () => {
       draw();
     } else if (e.key == "o") {
       let message = JSON.stringify([x, y, zoom]);
-      const input = JSON.parse(prompt('[x, y, zoom level]', message));
+      let inputString = prompt('[x, y, zoom level]', message);
+      if (inputString.charAt(0) != '[') {
+        inputString = '[' + inputString + ']';
+      }
+      const input = JSON.parse(inputString);
       if (
         Array.isArray(input) &&
         input.length == 3 &&
