@@ -183,6 +183,16 @@ window.onload = () => {
         x += boudingBox.width / 5.0;
       }
       draw();
+    } else if (e.key == "h") {
+      alert(
+`Click anywhere to zoom in x10
+Press Q to go back
+Press P to return to origin
+Press O to view/change your coordinates. You can save your favorite places!
+ 
+Press I to view/change the detail level
+Press E to view/change the fade-in (higher numbers = more responsive)`
+      );
     }
   };
   
