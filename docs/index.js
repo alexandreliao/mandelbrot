@@ -125,7 +125,7 @@ window.onload = () => {
       history.push([x, y, zoom]);
       x = 0.0;
       y = 0.0;
-      zoom = 1.0;
+      zoom = 0.5;
       
       draw();
     } else if (e.key == "o") {
