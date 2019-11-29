@@ -1,57 +1,51 @@
+function BoundingBox(top, left, width, height) {
+  this.top = top;
+  this.left = left;
+  this.width = width;
+  this.height = height;
+}
+
+const zoomAt = (x, y, zoom, aspectRatio) => {
+  let widthStretch = 1.0;
+  let heightStretch = 1.0;
+  
+  if (aspectRatio > 1.0) {
+    widthStretch = aspectRatio;
+  } else {
+    heightStretch = 1.0 / aspectRatio;
+  }
+  
+  let width = 2.0 / zoom * widthStretch;
+  let height = 2.0 / zoom * heightStretch;
+  let top = y + height / 2.0;
+  let left = x - width / 2.0;
+  
+  return new BoundingBox(top, left, width, height);
+}
+
 window.onload = () => {
   const canvas = document.getElementById("canvas");
-
   canvas.width = innerWidth;
   canvas.height = innerHeight;
-  
   let ctx = canvas.getContext('2d');
   
   let x = 0.;
   let y = 0.;
   let zoom = 0.5;
-  
   let workerCount = window.navigator.hardwareConcurrency;
+  let interlaceCount = 7;
+  let iterations = 1024;
+  let boudingBox = zoomAt(x, y, zoom, innerWidth / innerHeight);
+  
   let workers = [];
+  let interrupt = false;
   let workersAvailable = [];
   for (let i = 0; i < workerCount; i++) {
     workers.push(new Worker('worker.js'));
     workersAvailable.push(true);
   }
   
-  let interlaceCount = 7;
-  let interrupt = false;
-  
-  function BoundingBox(top, left, width, height) {
-    this.top = top;
-    this.left = left;
-    this.width = width;
-    this.height = height;
-  }
-  
-  const zoomAt = (x, y, zoom, aspectRatio) => {
-    let widthStretch = 1.0;
-    let heightStretch = 1.0;
-    
-    if (aspectRatio > 1.0) {
-      widthStretch = aspectRatio;
-    } else {
-      heightStretch = 1.0 / aspectRatio;
-    }
-    
-    let width = 2.0 / zoom * widthStretch;
-    let height = 2.0 / zoom * heightStretch;
-    let top = y + height / 2.0;
-    let left = x - width / 2.0;
-    
-    return new BoundingBox(top, left, width, height);
-  }
-  
-  let boudingBox = zoomAt(x, y, zoom, innerWidth / innerHeight);
-  
-  let iterations = 1024;
-  
   let drawJobs = [];
-  
   const draw = () => {
     resetWorkers();
     
@@ -60,13 +54,13 @@ window.onload = () => {
     
     boudingBox = zoomAt(x, y, zoom, innerWidth / innerHeight);
     
-    let workerRenderHeight = Math.ceil(innerHeight / workerCount);
-    let workerHeight = boudingBox.height * workerRenderHeight / innerHeight;
+    const workerRenderHeight = Math.ceil(innerHeight / workerCount);
+    const workerHeight = boudingBox.height * workerRenderHeight / innerHeight;
     
     for (let i = 0; i < workerCount; i++) {
       workersAvailable[i] = false; // I'm using this worker!
       
-      let workerNumber = i;
+      const workerNumber = i;
       workers[i].postMessage([
         boudingBox.top - workerNumber * workerHeight,
         boudingBox.left,
@@ -80,9 +74,9 @@ window.onload = () => {
         interlaceCount
       ]);
       workers[i].onmessage = message => {
-        let [buffer, complete] = message.data;
+        const [buffer, complete] = message.data;
         workersAvailable[workerNumber] = complete;
-        let imageData = new ImageData(buffer, innerWidth, workerRenderHeight);
+        const imageData = new ImageData(buffer, innerWidth, workerRenderHeight);
         drawJobs.push(requestAnimationFrame(() => ctx.putImageData(imageData, 0, workerNumber * workerRenderHeight)));
       }
     }
@@ -129,7 +123,7 @@ window.onload = () => {
       
       draw();
     } else if (e.key == "o") {
-      let message = JSON.stringify([x, y, zoom]);
+      const message = JSON.stringify([x, y, zoom]);
       let inputString = prompt('[x, y, zoom level]', message);
       if (inputString.charAt(0) != '[') {
         inputString = '[' + inputString + ']';

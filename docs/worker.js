@@ -3,7 +3,6 @@ let mandelbrot;
 
 self.onmessage = message => {
   if (rust === undefined) {
-    
     let importObject = {
       "__wbindgen_anyref_xform__": {
         "__wbindgen_anyref_table_grow": (delta) => { 0 },
@@ -14,7 +13,7 @@ self.onmessage = message => {
         "__wbindgen_throw": (ptr, len) => {}
       }
     };
-    let utf8decoder = new TextDecoder();
+    
     fetch("mandelbrot.wasm")
       .then(resp => resp.arrayBuffer())
       .then(bytes => WebAssembly.instantiate(bytes, importObject))
@@ -39,12 +38,12 @@ const main = (rust, message) => {
   
   rust.mandelbrot_clear(mandelbrot);
   
-  let colors = rust.mandelbrot_colors(mandelbrot);
+  const colors = rust.mandelbrot_colors(mandelbrot);
   
   for (let i = 0; i < interlaceCount; i++) {
     rust.mandelbrot_draw(mandelbrot, top, left, width, height, iterations, interlaceCount, i);
     
-    let data = new Uint8ClampedArray(
+    const data = new Uint8ClampedArray(
       rust.memory.buffer,
       colors,
       4 * renderWidth * renderHeight
