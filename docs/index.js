@@ -8,7 +8,7 @@ window.onload = () => {
   
   const workerCount = window.navigator.hardwareConcurrency;
   
-  const iterations = 1024;
+  let iterations = 1024;
   const interlaceCount = 7;
   
   let x = 0.0;
@@ -174,8 +174,36 @@ window.onload = () => {
       }
       
       drawer.draw(ctx, currentDrawBounds, currentZoomBounds, iterations, interlaceCount);
-    } else if (e.key == "h") {
+    } else if (e.key === "h") {
       showHelp();
+    } else if (e.key === "j") {
+      const inputStr = window.prompt("Details", iterations);
+      const input = JSON.parse(inputStr);
+      console.log(input);
+      if (typeof input === "number" && input !== iterations) {
+        iterations = input;
+        
+        drawer.draw(ctx, drawBounds, zoomBounds, iterations, interlaceCount);
+      }
+    } else if (e.key === "l") {
+      let inputStr = window.prompt("Location", JSON.stringify([x, y, zoom]));
+      if (inputStr.charAt(0) !== "[") {
+        inputStr = `[${inputStr}]`;
+      }
+      const input = JSON.parse(inputStr);
+      if (!Array.isArray(input) || input.length !== 3) {
+        return;
+      }
+      for (let i = 0; i < 3; i++) {
+        if (typeof input[i] !== "number") {
+          return;
+        }
+      }
+      if (input !== iterations) {
+        iterations = input;
+        
+        drawer.draw(ctx, drawBounds, zoomBounds, iterations, interlaceCount);
+      }
     }
   };
 };
@@ -206,15 +234,14 @@ function zoomAt(x, y, zoom, aspectRatio) {
 }
 
 function showHelp() {
-  alert(
+  window.alert(
 `Click anywhere to zoom in x10
 Press Q to go back
 Press E to return to origin
 Use WASD to move around
 
 Press H to view this help message
-Press J to view/change the fade-in (higher numbers = more responsive)
-Press K to view/change the detail level
+Press J to view/change the detail level
 Press L (that's the letter!) to save/load your coordinates`
   );
 };
