@@ -1,11 +1,191 @@
-function BoundingBox(top, left, width, height) {
+"use strict";
+
+window.onload = () => {
+  const canvas = document.getElementById("canvas");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  let ctx = canvas.getContext("2d");
+  
+  const workerCount = window.navigator.hardwareConcurrency;
+  
+  const iterations = 1024;
+  const interlaceCount = 7;
+  
+  let x = 0.0;
+  let y = 0.0;
+  let zoom = 0.5;
+  
+  let drawBounds = new Rect(0, 0, window.innerWidth, window.innerHeight);
+  let zoomBounds = zoomAt(x, y, zoom, window.innerWidth / window.innerHeight);
+  
+  let history = [[x, y, zoom]];
+  
+  const drawer = new Drawer(workerCount);
+  
+  drawer.draw(ctx, drawBounds, zoomBounds, iterations, interlaceCount);
+  
+  
+  window.onresize = () => {
+    drawBounds = new Rect(0, 0, window.innerWidth, window.innerHeight);
+    zoomBounds = zoomAt(x, y, zoom, window.innerWidth / window.innerHeight);
+    
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+    
+    ctx = canvas.getContext('2d');
+    
+    drawer.draw(ctx, drawBounds, zoomBounds, iterations, interlaceCount);
+  };
+  
+  window.onclick = e => {
+    if (e.which === 1) {
+      history.push([x, y, zoom]);
+      zoom *= 10;
+      x = e.clientX / window.innerWidth * zoomBounds.width + zoomBounds.left;
+      y = zoomBounds.top - e.clientY / window.innerHeight * zoomBounds.height;
+      
+      zoomBounds = zoomAt(x, y, zoom, window.innerWidth / window.innerHeight)
+      drawer.draw(ctx, drawBounds, zoomBounds, iterations, interlaceCount);
+    }
+  };
+  
+  window.onkeypress = e => {
+    if (e.key === "q") {
+      if (history.length > 0) {
+        [x, y, zoom] = history.pop();
+        zoomBounds = zoomAt(x, y, zoom, window.innerWidth / window.innerHeight);
+        drawer.draw(ctx, drawBounds, zoomBounds, iterations, interlaceCount);
+      }
+    } else if (e.key === "e") {
+      history.push([x, y, zoom]);
+      [x, y, zoom] = [0.0, 0.0, 0.5];
+      zoomBounds = zoomAt(x, y, zoom, window.innerWidth / window.innerHeight);
+      drawer.draw(ctx, drawBounds, zoomBounds, iterations, interlaceCount);
+    } else if ("wasd".includes(e.key)) {
+      // do nothing if threads not done working...
+      for (let i = 0; i < workerCount; i++) {
+        if (drawer.workerBusy[i]) {
+          return;
+        }
+      }
+      // this is not ideal...
+      
+      let currentZoomBounds;
+      let currentDrawBounds;
+      
+      if (e.key === "w") {
+        y += zoomBounds.height / 5;
+      } else if (e.key === "a") {
+        x -= zoomBounds.width / 5;
+      } else if (e.key === "s") {
+        y -= zoomBounds.height / 5;
+      } else if (e.key === "d") {
+        x += zoomBounds.width / 5;
+      }
+      
+      history.push([x, y, zoom]);
+      
+      zoomBounds = zoomAt(x, y, zoom, window.innerWidth / window.innerHeight);
+      
+      if (e.key === "w") {
+        currentZoomBounds = new Rect(
+          zoomBounds.top,
+          zoomBounds.left,
+          zoomBounds.width,
+          zoomBounds.height / 5
+        );
+        currentDrawBounds = new Rect(
+          drawBounds.top,
+          drawBounds.left,
+          drawBounds.width,
+          drawBounds.height / 5
+        );
+        
+        const currentImageData = ctx.getImageData(
+          0,
+          0,
+          drawBounds.width,
+          drawBounds.height * 4 / 5
+        );
+        ctx.putImageData(currentImageData, 0, drawBounds.height / 5);
+      } else if (e.key === "a") {
+        currentZoomBounds = new Rect(
+          zoomBounds.top,
+          zoomBounds.left,
+          zoomBounds.width / 5,
+          zoomBounds.height
+        );
+        currentDrawBounds = new Rect(
+          drawBounds.top,
+          drawBounds.left,
+          drawBounds.width / 5,
+          drawBounds.height
+        );
+        
+        const currentImageData = ctx.getImageData(
+          0,
+          0,
+          drawBounds.width * 4 / 5,
+          drawBounds.height
+        );
+        ctx.putImageData(currentImageData, drawBounds.width / 5, 0);
+      } else if (e.key === "s") {
+        currentZoomBounds = new Rect(
+          zoomBounds.top - zoomBounds.height * 4 / 5,
+          zoomBounds.left,
+          zoomBounds.width,
+          zoomBounds.height / 5
+        );
+        currentDrawBounds = new Rect(
+          drawBounds.top + drawBounds.height * 4 / 5,
+          drawBounds.left,
+          drawBounds.width,
+          drawBounds.height / 5
+        );
+        
+        const currentImageData = ctx.getImageData(
+          0,
+          drawBounds.height / 5,
+          drawBounds.width,
+          drawBounds.height * 4 / 5
+        );
+        ctx.putImageData(currentImageData, 0, 0);
+      } else if (e.key === "d") {
+        currentZoomBounds = new Rect(
+          zoomBounds.top,
+          zoomBounds.left + zoomBounds.width * 4 / 5,
+          zoomBounds.width / 5,
+          zoomBounds.height
+        );
+        currentDrawBounds = new Rect(
+          drawBounds.top,
+          drawBounds.left + drawBounds.width * 4 / 5,
+          drawBounds.width / 5,
+          drawBounds.height
+        );
+        
+        const currentImageData = ctx.getImageData(
+          drawBounds.width / 5,
+          0,
+          drawBounds.width * 4 / 5,
+          drawBounds.height
+        );
+        ctx.putImageData(currentImageData, 0, 0);
+      }
+      
+      drawer.draw(ctx, currentDrawBounds, currentZoomBounds, iterations, interlaceCount);
+    }
+  };
+};
+
+function Rect(top, left, width, height) {
   this.top = top;
   this.left = left;
   this.width = width;
   this.height = height;
 }
 
-const zoomAt = (x, y, zoom, aspectRatio) => {
+function zoomAt(x, y, zoom, aspectRatio) {
   let widthStretch = 1.0;
   let heightStretch = 1.0;
   
@@ -20,180 +200,101 @@ const zoomAt = (x, y, zoom, aspectRatio) => {
   let top = y + height / 2.0;
   let left = x - width / 2.0;
   
-  return new BoundingBox(top, left, width, height);
+  return new Rect(top, left, width, height);
 }
 
-window.onload = () => {
-  const canvas = document.getElementById("canvas");
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
-  let ctx = canvas.getContext('2d');
-  
-  let x = 0.;
-  let y = 0.;
-  let zoom = 0.5;
-  let workerCount = window.navigator.hardwareConcurrency;
-  let interlaceCount = 7;
-  let iterations = 1024;
-  let boudingBox = zoomAt(x, y, zoom, innerWidth / innerHeight);
-  
-  let workers = [];
-  let interrupt = false;
-  let workersAvailable = [];
+function showHelp() {
+  alert(
+`Click anywhere to zoom in x10
+Press Q to go back
+Press E to return to origin
+Use WASD to move around
+
+Press J to view/change the fade-in (higher numbers = more responsive)
+Press K to view/change the detail level
+Press L (that's the letter!) to save/load your coordinates
+Press ; to view/change number of threads used`
+  );
+};
+
+function Drawer(workerCount) {
+  this.workerCount = workerCount;
+  this.workers = [];
+  this.workerBusy = [];
   for (let i = 0; i < workerCount; i++) {
-    workers.push(new Worker('worker.js'));
-    workersAvailable.push(true);
+    this.workers.push(new Worker('worker.js'));
+    this.workerBusy.push(false);
   }
   
-  let drawJobs = [];
-  const draw = () => {
-    resetWorkers();
+  this.scheduledFrames = [];
+  
+  this.oldParameters = [];
+  this.timestamp;
+  this.draw = (context, drawBounds, zoomBounds, iterations, interlaceCount) => {
+    // check if anything has changed
+    const paramters = [context, drawBounds, zoomBounds, iterations, interlaceCount];
+    if (this.oldParameters === paramters) {
+      return; // we do nothing if nothing has changed
+    }
+    this.oldDrawParameters = paramters;
     
-    drawJobs.forEach(job => cancelAnimationFrame(job));
-    drawJobs = [];
+    // cancel all pending animation frames
+    for (let i = 0; i < this.scheduledFrames.length; i++) {
+      window.cancelAnimationFrame(this.scheduledFrames[i]);
+    }
+    this.scheduledFrames = [];
     
-    boudingBox = zoomAt(x, y, zoom, innerWidth / innerHeight);
+    this.timestamp = performance.now();
+    const workerTimestamp = this.timestamp;
     
-    const workerRenderHeight = Math.ceil(innerHeight / workerCount);
-    const workerHeight = boudingBox.height * workerRenderHeight / innerHeight;
+    const workerRenderHeight = Math.ceil(drawBounds.height / this.workerCount);
+    const workerHeight = zoomBounds.height * workerRenderHeight / drawBounds.height;
     
-    for (let i = 0; i < workerCount; i++) {
-      workersAvailable[i] = false; // I'm using this worker!
+    for (let i = 0; i < this.workerCount; i++) {
+      const workerIndex = i;
       
-      const workerNumber = i;
-      workers[i].postMessage([
-        boudingBox.top - workerNumber * workerHeight,
-        boudingBox.left,
-        boudingBox.width,
+      // kill workers still working
+      if (this.workerBusy[workerIndex]) {
+        this.workers[i].terminate();
+        this.workers[i] = new Worker('worker.js');
+        this.workerBusy[i] = false;
+      }
+      
+      // now throw work at them
+      const worker = this.workers[workerIndex];
+      
+      this.workerBusy[workerIndex] = true;
+      
+      const workerDrawLocation = workerIndex;
+      
+      worker.onmessage = message => {
+        const [array, finishedWorking] = message.data;
+        
+        this.workerBusy[workerIndex] = !finishedWorking;
+        
+        const imageData = new ImageData(array, drawBounds.width, workerRenderHeight);
+        const frame = window.requestAnimationFrame(
+          () => context.putImageData(
+            imageData,
+            drawBounds.left,
+            drawBounds.top + workerDrawLocation * workerRenderHeight
+          )
+        );
+        this.scheduledFrames.push(frame);
+      };
+      
+      worker.postMessage([
+        zoomBounds.top - i * workerHeight,
+        zoomBounds.left,
+        zoomBounds.width,
         workerHeight,
         
-        innerWidth,
+        drawBounds.width,
         workerRenderHeight,
         
         iterations,
         interlaceCount
-      ]);
-      workers[i].onmessage = message => {
-        const [buffer, complete] = message.data;
-        workersAvailable[workerNumber] = complete;
-        const imageData = new ImageData(buffer, innerWidth, workerRenderHeight);
-        drawJobs.push(requestAnimationFrame(() => ctx.putImageData(imageData, 0, workerNumber * workerRenderHeight)));
-      }
+      ], []);
     }
   };
-  
-  const resetWorkers = () => {
-    for (let i = 0; i < workers.length; i++) {
-      if (!workersAvailable[i]) {
-        workers[i].terminate();
-        workers[i] = new Worker('worker.js');
-        workersAvailable[i] = true;
-      }
-    }
-  };
-  
-  window.onresize = () => {
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
-    
-    ctx = canvas.getContext('2d');
-    draw();
-  };
-  
-  let history = [];
-  
-  window.onclick = e => {
-    if (e.which == 1) { // ctrl-click is zoom
-      history.push([x, y, zoom]);
-      
-      zoom *= 10;
-      x = e.clientX / innerWidth * boudingBox.width + boudingBox.left;
-      y = boudingBox.top - e.clientY / innerHeight * boudingBox.height;
-      
-      draw();
-    }
-  };
-  
-  window.onkeypress = e => {
-    if (e.key == "p") {
-      history.push([x, y, zoom]);
-      x = 0.0;
-      y = 0.0;
-      zoom = 0.5;
-      
-      draw();
-    } else if (e.key == "o") {
-      const message = JSON.stringify([x, y, zoom]);
-      let inputString = prompt('[x, y, zoom level]', message);
-      if (inputString.charAt(0) != '[') {
-        inputString = '[' + inputString + ']';
-      }
-      const input = JSON.parse(inputString);
-      if (
-        Array.isArray(input) &&
-        input.length == 3 &&
-        input.filter((x) => typeof x != 'number').length == 0 &&
-        input != message
-      ) {
-        [x, y, zoom] = input;
-        
-        draw();
-      }
-    } else if (e.key == "q") {
-      if (history.length > 0) {
-        [x, y, zoom] = history.pop();
-        
-        draw();
-      }
-    } else if (e.key == "i") {
-      const input = JSON.parse(prompt('Iterations', iterations));
-      if (typeof input == 'number' && input >= 0 && input != iterations) {
-        iterations = input;
-        draw();
-      }
-    } else if (e.key == "e") {
-      const input = JSON.parse(prompt('Interlace', interlaceCount));
-      if (typeof input == 'number' && input >= 1 && input != interlaceCount) {
-        interlaceCount = input;
-      }
-    } else if (e.key == "t") {
-      const input = JSON.parse(prompt('Workers', workerCount));
-      if (typeof input == 'number' && input >= 1 && input != workerCount) {
-        workerCount = input;
-        resetWorkers();
-      }
-    } else if (e.key == "r") {
-      for (let i = 0; i < workers.length; i++) {
-        workers[i].terminate();
-        workers[i] = new Worker('worker.js');
-        workersAvailable[i] = true;
-      }
-      draw();
-    } else if ("wasd".includes(e.key)) {
-      history.push([x, y, zoom]);
-      if (e.key == "w") {
-        y += boudingBox.height / 5.0;
-      } else if (e.key == "a") {
-        x -= boudingBox.width / 5.0;
-      } else if (e.key == "s") {
-        y -= boudingBox.height / 5.0;
-      } else if (e.key == "d") {
-        x += boudingBox.width / 5.0;
-      }
-      draw();
-    } else if (e.key == "h") {
-      alert(
-`Click anywhere to zoom in x10
-Press Q to go back
-Press P to return to origin
-Use WASD to move around
-Press O to view/change your coordinates. You can save your favorite places!
- 
-Press I to view/change the detail level
-Press E to view/change the fade-in (higher numbers = more responsive)`
-      );
-    }
-  };
-  
-  draw();
 }
