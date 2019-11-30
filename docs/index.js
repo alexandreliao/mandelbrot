@@ -174,6 +174,8 @@ window.onload = () => {
       }
       
       drawer.draw(ctx, currentDrawBounds, currentZoomBounds, iterations, interlaceCount);
+    } else if (e.key == "h") {
+      showHelp();
     }
   };
 };
@@ -210,10 +212,10 @@ Press Q to go back
 Press E to return to origin
 Use WASD to move around
 
+Press H to view this help message
 Press J to view/change the fade-in (higher numbers = more responsive)
 Press K to view/change the detail level
-Press L (that's the letter!) to save/load your coordinates
-Press ; to view/change number of threads used`
+Press L (that's the letter!) to save/load your coordinates`
   );
 };
 
