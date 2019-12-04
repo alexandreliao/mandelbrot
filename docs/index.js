@@ -242,9 +242,10 @@ Press Q to go back
 Press E to return to origin
 Use WASD to move around
 
+Press R to refresh an image (in case of render artifacts)
 Press H to view this help message
 Press J to view/change the detail level
-Press L (that's the letter!) to save/load your coordinates`
+Press L to save/load your coordinates`
   );
 };
 
