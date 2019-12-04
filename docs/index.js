@@ -204,6 +204,8 @@ window.onload = () => {
         
         drawer.draw(ctx, drawBounds, zoomBounds, iterations, interlaceCount);
       }
+    } else if (e.key === "r") {
+      drawer.draw(ctx, drawBounds, zoomBounds, iterations, interlaceCount);
     }
   };
 };
@@ -283,6 +285,7 @@ function Drawer(workerCount) {
       const workerIndex = i;
       
       // kill workers still working
+      // let the workers unionize
       if (this.workerBusy[workerIndex]) {
         this.workers[i].terminate();
         this.workers[i] = new Worker('worker.js');
